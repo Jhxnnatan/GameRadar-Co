@@ -1,226 +1,983 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Activity, ArrowDownUp, Bell, Bookmark, Check, ChevronDown, ChevronRight,
-  CircleDollarSign, Gamepad2, Heart, Info, LayoutGrid, Search, SlidersHorizontal,
-  Sparkles, Star, TrendingDown, X, Zap
+  Activity, ArrowDownUp, Bell, BookOpen, Bot, Check,
+  ChevronRight, CircleDollarSign, Gamepad2, Heart,
+  LayoutGrid, MessageCircle, Search, Sparkles, Star,
+  TrendingDown, X, Zap
 } from "lucide-react";
-import { GAMES, GENRES, PLATFORMS, formatCOP, coverGradient } from "./data";
 
-const readStore = (key, fallback) => {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
-  catch { return fallback; }
+import {
+  GAMES,
+  GENRES,
+  PLATFORMS,
+  formatCOP,
+  coverGradient
+} from "./data";
+
+const readStorage = (key, fallback) => {
+  try {
+    return JSON.parse(localStorage.getItem(key)) ?? fallback;
+  } catch {
+    return fallback;
+  }
 };
 
-function GameCover({ game, large = false }) {
-  const symbols = { RPG:"✦", Acción:"⚔", Roguelike:"◈", Plataformas:"▰", Simulación:"✿",
-    Metroidvania:"◉", Deportes:"◎", Carreras:"⌁", Aventura:"△", Terror:"☾",
-    Puzzle:"▦", Estrategia:"⬡" };
-  return <div className={`game-cover ${large ? "cover-large" : ""}`} style={{background:coverGradient(game.hue)}}>
-    {game.image && <img className="game-cover-image" src={game.image} alt={`Portada de ${game.name}`} loading="lazy" onError={(e)=>{e.currentTarget.style.display="none";}} />}
-    <div className="cover-orbit orbit-one" /><div className="cover-orbit orbit-two" />
-    <span className="cover-genre">{game.genre}</span>
-    {!game.image && <><span className="cover-symbol">{symbols[game.genre] || "✦"}</span><div className="cover-title">{game.name}</div></>}
-    <span className="cover-brand">GAME RADAR / CO</span>
-  </div>;
+function Cover({ game }) {
+  return (
+    <div
+      className="cover"
+      style={{ background: coverGradient(game.hue) }}
+    >
+      {game.image && (
+        <img
+          src={game.image}
+          alt={game.name}
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      )}
+
+      <span className="cover-genre">{game.genre}</span>
+
+      <b>{game.name}</b>
+
+      <small>GAMERADAR CO</small>
+    </div>
+  );
 }
 
-function PriceLine({ offer, best }) {
-  return <div className={`price-line ${best ? "best-line" : ""}`}>
-    <span><span className="store-dot">{offer.code}</span>{offer.store}{best && <span className="best-label">MEJOR PRECIO</span>}</span>
-    <strong>{formatCOP(offer.price)}</strong>
-  </div>;
-}
+function GameCard({ game, favorites, toggleFavorite, openGame }) {
+  return (
+    <article className="game-card">
+      <button
+        className="cover-button"
+        onClick={() => openGame(game)}
+      >
+        <Cover game={game} />
+      </button>
 
-function GameCard({ game, favorite, onFavorite, onOpen }) {
-  return <article className="game-card">
-    <button className="cover-button" onClick={() => onOpen(game)} aria-label={`Ver ${game.name}`}>
-      <GameCover game={game} />
-    </button>
-    <div className="game-card-body">
-      <div className="card-meta"><span>{game.genre}</span><span className="radar-mini"><Zap size={12}/>{game.radar}/100</span></div>
-      <h3>{game.name}</h3>
-      <div className="best-store">Mejor precio en <b>{game.best.store}</b></div>
-      <div className="card-price-row">
-        <div><strong className="card-price">{formatCOP(game.cheapest)}</strong>
-          {game.maxDiscount > 0 && <span className="discount-pill">-{game.maxDiscount}%</span>}
+      <div className="game-card-content">
+        <div className="meta">
+          <span>{game.genre}</span>
+          <span className="score">
+            <Zap size={13} />
+            {game.radar}/100
+          </span>
         </div>
-        <button className={`icon-button favorite-button ${favorite ? "is-favorite" : ""}`} onClick={() => onFavorite(game.id)} aria-label={favorite ? "Quitar de favoritos" : "Guardar en favoritos"}>
-          <Heart size={17} fill={favorite ? "currentColor" : "none"}/>
+
+        <h3>{game.name}</h3>
+
+        <p className="store">
+          Mejor precio en <b>{game.best.store}</b>
+        </p>
+
+        <div className="price-row">
+          <strong>{formatCOP(game.cheapest)}</strong>
+
+          {game.maxDiscount > 0 && (
+            <span className="discount">
+              -{game.maxDiscount}%
+            </span>
+          )}
+
+          <button
+            className={`heart ${
+              favorites.includes(game.id) ? "active" : ""
+            }`}
+            onClick={() => toggleFavorite(game.id)}
+          >
+            <Heart
+              size={17}
+              fill={
+                favorites.includes(game.id)
+                  ? "currentColor"
+                  : "none"
+              }
+            />
+          </button>
+        </div>
+
+        <button
+          className="text-link"
+          onClick={() => openGame(game)}
+        >
+          Comparar precios <ChevronRight size={15} />
         </button>
       </div>
-      <button className="compare-button" onClick={() => onOpen(game)}>Comparar precios <ChevronRight size={15}/></button>
+    </article>
+  );
+}
+
+function SectionTitle({ title, subtitle }) {
+  return (
+    <div className="section-title">
+      <span className="kicker">GAMERADAR CO / PRO</span>
+      <h2>{title}</h2>
+      <p>{subtitle}</p>
     </div>
-  </article>;
+  );
 }
 
-function PriceChart({ game }) {
-  const points = [1.18,1.1,1.14,1.03,1.07,.98,1.02,.94,.9,.96,.88,.82].map((v,i)=>({
-    x: i*30+4, y: 95-v*52
-  }));
-  const d = points.map((p,i)=>`${i?"L":"M"} ${p.x} ${p.y}`).join(" ");
-  return <div className="chart-wrap">
-    <div className="chart-heading"><div><b>Historial de precio</b><span>Últimos 12 registros · datos de demostración</span></div><span className="chart-down"><TrendingDown size={14}/> -18%</span></div>
-    <svg viewBox="0 0 340 110" className="price-chart" role="img" aria-label="Gráfico ilustrativo de historial de precios">
-      <defs><linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#a78bfa" stopOpacity=".3"/><stop offset="100%" stopColor="#a78bfa" stopOpacity="0"/></linearGradient></defs>
-      {[24,55,86].map(y=><line key={y} x1="0" x2="340" y1={y} y2={y} stroke="#ffffff" strokeOpacity=".08" strokeDasharray="4 5"/>)}
-      <path d={`${d} L 334 110 L 4 110 Z`} fill="url(#chartFill)"/>
-      <path d={d} fill="none" stroke="#a78bfa" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx={points.at(-1).x} cy={points.at(-1).y} r="4" fill="#a3e635" stroke="#111827" strokeWidth="2"/>
-    </svg>
-    <div className="chart-labels"><span>Hace 12 registros</span><span>Actual</span></div>
-  </div>;
-}
-
-function GameModal({ game, onClose, onAlert }) {
+function GameModal({ game, close, createAlert, addLibrary }) {
   if (!game) return null;
-  const sorted = [...game.offers].sort((a,b)=>a.price-b.price);
-  return <div className="modal-backdrop" onMouseDown={(e)=>e.target===e.currentTarget && onClose()}>
-    <section className="game-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <button className="modal-close icon-button" onClick={onClose} aria-label="Cerrar"><X size={19}/></button>
-      <div className="modal-top"><GameCover game={game} large/><div className="modal-intro">
-        <span className="eyebrow">{game.genre} · COMPARADOR</span><h2 id="modal-title">{game.name}</h2>
-        <p>Compara las opciones disponibles en el catálogo de demostración.</p>
-        <div className="modal-best-price"><span>Desde</span><strong>{formatCOP(game.cheapest)}</strong><em>en {game.best.store}</em></div>
-        <button className="primary-button" onClick={()=>onAlert(game)}> <Bell size={16}/> Crear alerta de precio</button>
-      </div></div>
-      <div className="modal-section"><div className="section-title-row"><h3>Comparación por tienda</h3><span className="demo-tag">PRECIOS DEMO</span></div>
-        <div className="price-table">{sorted.map((offer,i)=><PriceLine key={offer.code} offer={offer} best={i===0}/>)}</div>
-      </div>
-      <PriceChart game={game}/>
-      <div className="modal-note"><Info size={15}/> Los valores son ilustrativos y no corresponden a cotizaciones en tiempo real.</div>
-    </section>
-  </div>;
-}
 
-function AlertModal({ game, onClose, onSave }) {
-  const [target,setTarget] = useState(game ? String(Math.round(game.cheapest*.85/100)*100) : "");
-  if (!game) return null;
-  return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
-    <section className="small-modal" role="dialog" aria-modal="true" aria-labelledby="alert-title">
-      <button className="modal-close icon-button" onClick={onClose}><X size={19}/></button>
-      <div className="modal-icon"><Bell size={21}/></div><span className="eyebrow">RADAR DE PRECIOS</span>
-      <h2 id="alert-title">Alerta para {game.name}</h2>
-      <p>Define el precio al que te gustaría encontrar este juego.</p>
-      <label className="field-label">Avisarme cuando esté por debajo de</label>
-      <div className="money-input"><span>$</span><input type="number" min="1000" step="1000" value={target} onChange={e=>setTarget(e.target.value)}/><span>COP</span></div>
-      <button className="primary-button full-button" disabled={!Number(target)||Number(target)<=0} onClick={()=>onSave(Number(target))}>Guardar alerta</button>
-      <p className="tiny-disclaimer">Esta alerta se guarda en este navegador. No envía notificaciones automáticas.</p>
-    </section>
-  </div>;
+  const offers = [...game.offers].sort(
+    (a, b) => a.price - b.price
+  );
+
+  return (
+    <div className="backdrop" onClick={close}>
+      <section
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className="close" onClick={close}>
+          <X />
+        </button>
+
+        <div className="modal-head">
+          <Cover game={game} />
+
+          <div>
+            <span className="kicker">COMPARADOR DE TIENDAS</span>
+
+            <h2>{game.name}</h2>
+
+            <p>
+              Información de demostración, no precios en vivo.
+            </p>
+
+            <strong className="modal-price">
+              Desde {formatCOP(game.cheapest)}
+            </strong>
+
+            <button
+              className="button primary"
+              onClick={() => createAlert(game)}
+            >
+              <Bell size={16} /> Crear alerta
+            </button>
+
+            <button
+              className="button subtle"
+              onClick={() => addLibrary(game)}
+            >
+              <BookOpen size={16} /> Mi biblioteca
+            </button>
+          </div>
+        </div>
+
+        <h3>Comparación de tiendas</h3>
+
+        {offers.map((offer, index) => (
+          <div
+            className={`offer ${index === 0 ? "best" : ""}`}
+            key={offer.code}
+          >
+            <span>
+              {offer.store}
+              {index === 0 && <em> MEJOR PRECIO</em>}
+            </span>
+
+            <b>{formatCOP(offer.price)}</b>
+          </div>
+        ))}
+
+        <div className="disclaimer">
+          Los precios son datos sintéticos de demostración.
+        </div>
+      </section>
+    </div>
+  );
 }
 
 export default function App() {
-  const [tab,setTab] = useState("Explorar");
-  const [query,setQuery] = useState("");
-  const [platform,setPlatform] = useState("all");
-  const [genre,setGenre] = useState("all");
-  const [sort,setSort] = useState("cheap");
-  const [maxPrice,setMaxPrice] = useState(300000);
-  const [onlyDeals,setOnlyDeals] = useState(false);
-  const [budget,setBudget] = useState("");
-  const [showFilters,setShowFilters] = useState(false);
-  const [favorites,setFavorites] = useState(()=>readStore("gr-favorites",[]));
-  const [alerts,setAlerts] = useState(()=>readStore("gr-alerts",[]));
-  const [selected,setSelected] = useState(null);
-  const [alertGame,setAlertGame] = useState(null);
-  const [toast,setToast] = useState("");
-  const [showBudget,setShowBudget] = useState(false);
+  const [tab, setTab] = useState("Inicio");
+  const [query, setQuery] = useState("");
+  const [platform, setPlatform] = useState("all");
+  const [genre, setGenre] = useState("all");
+  const [sort, setSort] = useState("cheap");
+  const [budget, setBudget] = useState("");
 
-  useEffect(()=>localStorage.setItem("gr-favorites",JSON.stringify(favorites)),[favorites]);
-  useEffect(()=>localStorage.setItem("gr-alerts",JSON.stringify(alerts)),[alerts]);
-  useEffect(()=>{if(!toast)return;const id=setTimeout(()=>setToast(""),2600);return()=>clearTimeout(id)},[toast]);
+  const [favorites, setFavorites] = useState(
+    () => readStorage("gr-favorites", [])
+  );
 
-  const toggleFavorite = (id) => setFavorites(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id]);
-  const saveAlert = (target) => {
-    setAlerts(old=>[{id:Date.now(),gameId:alertGame.id,gameName:alertGame.name,target,createdAt:new Date().toISOString()},...old]);
-    setAlertGame(null);setToast("Alerta guardada en este dispositivo");
-  };
-  const filtered = useMemo(()=>{
-    let list = GAMES.filter(g=>{
-      const selectedOffers = platform==="all" ? g.offers : g.offers.filter(o=>o.code===platform);
-      const low = Math.min(...selectedOffers.map(o=>o.price));
-      return (!query || g.name.toLowerCase().includes(query.toLowerCase()))
-        && (genre==="all"||g.genre===genre)
-        && selectedOffers.length>0
-        && low<=maxPrice
-        && (!budget || low<=Number(budget))
-        && (!onlyDeals || selectedOffers.some(o=>o.discount>0))
-        && (tab!=="Ofertas" || selectedOffers.some(o=>o.discount>0))
-        && (tab!=="Favoritos" || favorites.includes(g.id));
-    }).map(g=>({...g,shownOffers:platform==="all"?g.offers:g.offers.filter(o=>o.code===platform)}));
-    const low = g=>Math.min(...g.shownOffers.map(o=>o.price));
-    return list.sort((a,b)=>sort==="expensive"?low(b)-low(a):sort==="discount"?b.maxDiscount-a.maxDiscount:sort==="name"?a.name.localeCompare(b.name,"es"):low(a)-low(b));
-  },[query,platform,genre,maxPrice,budget,onlyDeals,tab,favorites,sort]);
+  const [alerts, setAlerts] = useState(
+    () => readStorage("gr-alerts", [])
+  );
 
-  const nav = [
-    {name:"Explorar",icon:LayoutGrid},{name:"Ofertas",icon:Zap},
-    {name:"Favoritos",icon:Heart},{name:"Historial",icon:Activity},{name:"Acerca",icon:Info}
+  const [library, setLibrary] = useState(
+    () => readStorage("gr-library", [])
+  );
+
+  const [reviews, setReviews] = useState(
+    () => readStorage("gr-reviews", [])
+  );
+
+  const [selected, setSelected] = useState(null);
+  const [alertGame, setAlertGame] = useState(null);
+  const [alertTarget, setAlertTarget] = useState("");
+  const [toast, setToast] = useState("");
+
+  const [aiBudget, setAiBudget] = useState("100000");
+  const [aiGenre, setAiGenre] = useState("all");
+
+  const [reviewGame, setReviewGame] = useState("");
+  const [reviewText, setReviewText] = useState("");
+  const [reviewRating, setReviewRating] = useState("5");
+
+  useEffect(() => {
+    localStorage.setItem("gr-favorites", JSON.stringify(favorites));
+  }, [favorites]);
+
+  useEffect(() => {
+    localStorage.setItem("gr-alerts", JSON.stringify(alerts));
+  }, [alerts]);
+
+  useEffect(() => {
+    localStorage.setItem("gr-library", JSON.stringify(library));
+  }, [library]);
+
+  useEffect(() => {
+    localStorage.setItem("gr-reviews", JSON.stringify(reviews));
+  }, [reviews]);
+
+  useEffect(() => {
+    if (!toast) return;
+
+    const timer = setTimeout(() => setToast(""), 2500);
+
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const navigation = [
+    ["Inicio", LayoutGrid],
+    ["Explorar", Search],
+    ["Ofertas", Zap],
+    ["Radar de precios", Activity],
+    ["Comparador", ArrowDownUp],
+    ["GameRadar AI", Bot],
+    ["Comunidad", MessageCircle],
+    ["Mi biblioteca", BookOpen]
   ];
-  const resetFilters = () => {setQuery("");setPlatform("all");setGenre("all");setMaxPrice(300000);setOnlyDeals(false);setBudget("");};
-  const openAlert = (game) => {setSelected(null);setAlertGame(game);};
 
-  return <div className="app-shell">
-    <header className="topbar"><div className="topbar-inner">
-      <button className="brand" onClick={()=>setTab("Explorar")}><span className="brand-mark"><Activity size={23}/><span/></span><span>GameRadar <b>CO</b></span></button>
-      <nav className="desktop-nav">{nav.map(({name,icon:Icon})=><button key={name} className={tab===name?"nav-active":""} onClick={()=>setTab(name)}><Icon size={16}/>{name}{name==="Favoritos"&&favorites.length>0&&<i>{favorites.length}</i>}</button>)}</nav>
-      <div className="topbar-right"><span className="demo-indicator"><span/> MODO DEMO</span><button className="mobile-menu icon-button" onClick={()=>setShowFilters(v=>!v)} aria-label="Mostrar filtros"><SlidersHorizontal/></button></div>
-    </div></header>
+  const toggleFavorite = (id) => {
+    setFavorites((old) =>
+      old.includes(id)
+        ? old.filter((item) => item !== id)
+        : [...old, id]
+    );
+  };
 
-    <main className="page-wrap">
-      {tab==="Acerca" ? <section className="about-page">
-        <span className="eyebrow">EL PROYECTO</span><h1>Comprar mejor también<br/><span>es parte del juego.</span></h1>
-        <p className="about-lead">GameRadar CO nace para ayudar a los jugadores colombianos a comparar precios de videojuegos y tomar decisiones de compra con más información.</p>
-        <div className="about-grid">
-          <div className="about-card"><div className="feature-icon"><CircleDollarSign/></div><h3>Afiliados</h3><p>El proyecto podría recibir una comisión cuando una compra se realice desde un enlace de afiliado autorizado.</p></div>
-          <div className="about-card"><div className="feature-icon"><Activity/></div><h3>Publicidad identificada</h3><p>Espacios promocionales claramente marcados, separados del ordenamiento objetivo por precio.</p></div>
-          <div className="about-card"><div className="feature-icon"><Sparkles/></div><h3>Plan premium</h3><p>Funciones futuras como alertas avanzadas, seguimiento de precios y listas sincronizadas.</p></div>
+  const addLibrary = (game) => {
+    setLibrary((old) =>
+      old.includes(game.id)
+        ? old.filter((id) => id !== game.id)
+        : [...old, game.id]
+    );
+
+    setToast("Biblioteca actualizada");
+  };
+
+  const filteredGames = useMemo(() => {
+    let games = GAMES.filter((game) => {
+      const availableOffers =
+        platform === "all"
+          ? game.offers
+          : game.offers.filter(
+              (offer) => offer.code === platform
+            );
+
+      if (!availableOffers.length) return false;
+
+      const lowestPrice = Math.min(
+        ...availableOffers.map((offer) => offer.price)
+      );
+
+      if (
+        !game.name.toLowerCase().includes(query.toLowerCase())
+      ) return false;
+
+      if (genre !== "all" && game.genre !== genre) {
+        return false;
+      }
+
+      if (budget && lowestPrice > Number(budget)) {
+        return false;
+      }
+
+      if (tab === "Ofertas" && game.maxDiscount <= 0) {
+        return false;
+      }
+
+      if (
+        tab === "Mi biblioteca" &&
+        !library.includes(game.id)
+      ) return false;
+
+      return true;
+    });
+
+    return games.sort((a, b) => {
+      if (sort === "expensive") {
+        return b.cheapest - a.cheapest;
+      }
+
+      if (sort === "discount") {
+        return b.maxDiscount - a.maxDiscount;
+      }
+
+      if (sort === "name") {
+        return a.name.localeCompare(b.name, "es");
+      }
+
+      return a.cheapest - b.cheapest;
+    });
+  }, [
+    query,
+    platform,
+    genre,
+    budget,
+    tab,
+    library,
+    sort
+  ]);
+
+  const createAlert = (game) => {
+    setSelected(null);
+    setAlertGame(game);
+    setAlertTarget(
+      String(Math.round(game.cheapest * 0.85 / 100) * 100)
+    );
+  };
+
+  const saveAlert = () => {
+    if (!Number(alertTarget) || Number(alertTarget) <= 0) {
+      return;
+    }
+
+    setAlerts((old) => [
+      {
+        id: Date.now(),
+        gameId: alertGame.id,
+        gameName: alertGame.name,
+        target: Number(alertTarget)
+      },
+      ...old
+    ]);
+
+    setAlertGame(null);
+    setToast("Alerta guardada");
+  };
+
+  const aiResults = GAMES
+    .filter((game) =>
+      (aiGenre === "all" || game.genre === aiGenre) &&
+      game.cheapest <= Number(aiBudget || 0)
+    )
+    .sort((a, b) => b.radar - a.radar)
+    .slice(0, 8);
+
+  const showGames = (title, subtitle, games) => (
+    <>
+      <SectionTitle title={title} subtitle={subtitle} />
+
+      <div className="grid">
+        {games.map((game) => (
+          <GameCard
+            key={game.id}
+            game={game}
+            favorites={favorites}
+            toggleFavorite={toggleFavorite}
+            openGame={setSelected}
+          />
+        ))}
+      </div>
+    </>
+  );
+
+  return (
+    <div className="app">
+
+      <header className="topbar">
+        <button
+          className="brand"
+          onClick={() => setTab("Inicio")}
+        >
+          <span className="brand-icon">
+            <Activity />
+          </span>
+
+          GameRadar <b>CO</b>
+        </button>
+
+        <nav>
+          {navigation.map(([name, Icon]) => (
+            <button
+              key={name}
+              className={tab === name ? "selected" : ""}
+              onClick={() => {
+                setTab(name);
+                setQuery("");
+              }}
+            >
+              <Icon size={15} />
+              {name}
+            </button>
+          ))}
+        </nav>
+
+        <span className="demo-badge">
+          <i /> MODO DEMO
+        </span>
+      </header>
+
+      <main className="container">
+
+        {tab === "Inicio" && (
+          <>
+            <section className="hero">
+              <div>
+                <span className="kicker">
+                  RADAR GAMER COLOMBIA
+                </span>
+
+                <h1>
+                  Encuentra el mejor precio.
+                  <br />
+                  <em>Juega sin pagar de más.</em>
+                </h1>
+
+                <p>
+                  Compara videojuegos, descubre oportunidades
+                  y aprovecha tu presupuesto gamer.
+                </p>
+
+                <button
+                  className="button primary"
+                  onClick={() => setTab("Explorar")}
+                >
+                  Explorar catálogo <ChevronRight size={16} />
+                </button>
+              </div>
+
+              <div className="hero-radar">
+                <Gamepad2 />
+              </div>
+            </section>
+
+            <div className="stats">
+              <div>
+                <Gamepad2 />
+                <b>{GAMES.length}</b>
+                <span>Juegos en catálogo</span>
+              </div>
+
+              <div>
+                <CircleDollarSign />
+                <b>5</b>
+                <span>Tiendas de demostración</span>
+              </div>
+
+              <div>
+                <TrendingDown />
+                <b>{GAMES.filter(g => g.maxDiscount > 0).length}</b>
+                <span>Ofertas ilustrativas</span>
+              </div>
+
+              <div>
+                <Heart />
+                <b>{favorites.length}</b>
+                <span>Favoritos</span>
+              </div>
+            </div>
+
+            {showGames(
+              "Juegos destacados",
+              "Los juegos con mejor puntuación GameRadar.",
+              [...GAMES]
+                .sort((a, b) => b.radar - a.radar)
+                .slice(0, 8)
+            )}
+          </>
+        )}
+
+        {(tab === "Explorar" ||
+          tab === "Ofertas" ||
+          tab === "Mi biblioteca") && (
+          <section className="section">
+
+            <SectionTitle
+              title={
+                tab === "Ofertas"
+                  ? "Ofertas destacadas"
+                  : tab === "Mi biblioteca"
+                  ? "Mi biblioteca"
+                  : "Explora videojuegos"
+              }
+              subtitle="Encuentra videojuegos y compara sus precios."
+            />
+
+            <div className="toolbar">
+
+              <label className="search">
+                <Search />
+
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar videojuego..."
+                />
+              </label>
+
+              <select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value)}
+              >
+                <option value="all">Todas las plataformas</option>
+
+                {Object.entries(PLATFORMS).map(([key, name]) => (
+                  <option key={key} value={key}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={genre}
+                onChange={(e) => setGenre(e.target.value)}
+              >
+                <option value="all">Todos los géneros</option>
+
+                {GENRES.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+              >
+                <option value="cheap">Menor precio</option>
+                <option value="expensive">Mayor precio</option>
+                <option value="discount">Mayor descuento</option>
+                <option value="name">Nombre A-Z</option>
+              </select>
+
+              <input
+                className="budget"
+                type="number"
+                placeholder="Presupuesto COP"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+              />
+            </div>
+
+            <div className="results">
+              {filteredGames.length} resultados · precios de demostración
+            </div>
+
+            {filteredGames.length ? (
+              <div className="grid">
+                {filteredGames.map((game) => (
+                  <GameCard
+                    key={game.id}
+                    game={game}
+                    favorites={favorites}
+                    toggleFavorite={toggleFavorite}
+                    openGame={setSelected}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="empty">
+                No hay juegos que coincidan con tus filtros.
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === "Radar de precios" && (
+          <section className="section">
+
+            <SectionTitle
+              title="Radar de precios"
+              subtitle="Controla tus objetivos de compra."
+            />
+
+            <div className="feature-grid">
+
+              <div className="panel">
+                <h3><Bell /> Tus alertas</h3>
+
+                {alerts.length ? (
+                  alerts.map((alert) => (
+                    <div className="list-row" key={alert.id}>
+                      <span>
+                        <b>{alert.gameName}</b>
+                        <small>
+                          Objetivo: {formatCOP(alert.target)}
+                        </small>
+                      </span>
+
+                      <button
+                        className="button subtle"
+                        onClick={() =>
+                          setAlerts(old =>
+                            old.filter(a => a.id !== alert.id)
+                          )
+                        }
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="muted">
+                    Todavía no tienes alertas guardadas.
+                  </p>
+                )}
+              </div>
+
+              <div className="panel">
+                <h3><TrendingDown /> Tendencia ilustrativa</h3>
+
+                <div className="bars">
+                  {[74, 52, 67, 43, 58, 34, 48, 25, 39, 19, 28, 14].map(
+                    (height, index) => (
+                      <i
+                        key={index}
+                        style={{ height: `${height}%` }}
+                      />
+                    )
+                  )}
+                </div>
+
+                <p className="muted">
+                  Gráfico conceptual. No representa historial
+                  real de precios.
+                </p>
+              </div>
+            </div>
+
+            <SectionTitle
+              title="Crear una alerta"
+              subtitle="Selecciona un juego para establecer un precio objetivo."
+            />
+
+            <div className="compact-grid">
+              {GAMES.map((game) => (
+                <button
+                  className="pick-game"
+                  key={game.id}
+                  onClick={() => createAlert(game)}
+                >
+                  <span>{game.name}</span>
+                  <b>{formatCOP(game.cheapest)}</b>
+                  <ChevronRight size={15} />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {tab === "Comparador" && (
+          <section className="section">
+
+            <SectionTitle
+              title="Comparador avanzado"
+              subtitle="Compara precios entre las tiendas disponibles."
+            />
+
+            <div className="toolbar">
+              <label className="search">
+                <Search />
+
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar videojuego..."
+                />
+              </label>
+            </div>
+
+            <div className="compare-list">
+              {GAMES.filter(game =>
+                game.name.toLowerCase().includes(query.toLowerCase())
+              ).map((game) => (
+                <button
+                  className="compare-item"
+                  key={game.id}
+                  onClick={() => setSelected(game)}
+                >
+                  <span>{game.name}</span>
+                  <b>{formatCOP(game.cheapest)}</b>
+                  <span className="muted">
+                    {game.offers.length} tiendas
+                  </span>
+                  <ChevronRight />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {tab === "GameRadar AI" && (
+          <section className="section">
+
+            <SectionTitle
+              title="GameRadar AI"
+              subtitle="Encuentra juegos según tu presupuesto."
+            />
+
+            <div className="ai-panel">
+
+              <div className="ai-title">
+                <span className="ai-icon">
+                  <Sparkles />
+                </span>
+
+                <div>
+                  <h3>Encuentra tu próximo juego</h3>
+                  <p>
+                    Recomendaciones según el catálogo disponible.
+                  </p>
+                </div>
+              </div>
+
+              <div className="toolbar">
+
+                <label>
+                  Presupuesto máximo (COP)
+
+                  <input
+                    type="number"
+                    value={aiBudget}
+                    onChange={(e) => setAiBudget(e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  Género
+
+                  <select
+                    value={aiGenre}
+                    onChange={(e) => setAiGenre(e.target.value)}
+                  >
+                    <option value="all">Cualquiera</option>
+
+                    {GENRES.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="grid">
+                {aiResults.map((game) => (
+                  <GameCard
+                    key={game.id}
+                    game={game}
+                    favorites={favorites}
+                    toggleFavorite={toggleFavorite}
+                    openGame={setSelected}
+                  />
+                ))}
+              </div>
+
+              {!aiResults.length && (
+                <p className="muted">
+                  No hay resultados. Prueba con otro presupuesto.
+                </p>
+              )}
+
+              <p className="disclaimer">
+                Este recomendador utiliza reglas y datos locales.
+                Todavía no está conectado a un modelo de IA.
+              </p>
+            </div>
+          </section>
+        )}
+
+        {tab === "Comunidad" && (
+          <section className="section">
+
+            <SectionTitle
+              title="Comunidad GameRadar"
+              subtitle="Comparte tus opiniones sobre videojuegos."
+            />
+
+            <div className="panel review-form">
+              <h3>Publicar una reseña</h3>
+
+              <label>
+                Videojuego
+
+                <select
+                  value={reviewGame}
+                  onChange={(e) => setReviewGame(e.target.value)}
+                >
+                  <option value="">Selecciona un juego</option>
+
+                  {GAMES.map((game) => (
+                    <option key={game.id}>
+                      {game.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Calificación
+
+                <select
+                  value={reviewRating}
+                  onChange={(e) => setReviewRating(e.target.value)}
+                >
+                  {[5, 4, 3, 2, 1].map((number) => (
+                    <option key={number} value={number}>
+                      {number} estrellas
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Tu opinión
+
+                <textarea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  placeholder="¿Qué te pareció este juego?"
+                />
+              </label>
+
+              <button
+                className="button primary"
+                disabled={!reviewGame || !reviewText.trim()}
+                onClick={() => {
+                  setReviews(old => [
+                    {
+                      id: Date.now(),
+                      game: reviewGame,
+                      rating: Number(reviewRating),
+                      text: reviewText.trim()
+                    },
+                    ...old
+                  ]);
+
+                  setReviewText("");
+                  setToast("Reseña guardada");
+                }}
+              >
+                Publicar reseña
+              </button>
+            </div>
+
+            <div className="reviews">
+              {reviews.length ? (
+                reviews.map((review) => (
+                  <article className="panel" key={review.id}>
+                    <div className="review-top">
+                      <b>{review.game}</b>
+
+                      <span>
+                        {"★".repeat(review.rating)}
+                        {"☆".repeat(5 - review.rating)}
+                      </span>
+                    </div>
+
+                    <p>{review.text}</p>
+
+                    <small>Guardada en este dispositivo</small>
+                  </article>
+                ))
+              ) : (
+                <div className="empty">
+                  Todavía no hay reseñas.
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+      </main>
+
+      <footer className="footer">
+        <b>GameRadar <em>CO</em></b>
+
+        <span>
+          Proyecto académico · Precios de demostración.
+        </span>
+      </footer>
+
+      <GameModal
+        game={selected}
+        close={() => setSelected(null)}
+        createAlert={createAlert}
+        addLibrary={addLibrary}
+      />
+
+      {alertGame && (
+        <div
+          className="backdrop"
+          onClick={() => setAlertGame(null)}
+        >
+          <section
+            className="modal alert-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="close"
+              onClick={() => setAlertGame(null)}
+            >
+              <X />
+            </button>
+
+            <span className="kicker">RADAR DE PRECIOS</span>
+
+            <h2>{alertGame.name}</h2>
+
+            <p>
+              Define el precio objetivo en pesos colombianos.
+            </p>
+
+            <label>
+              Precio máximo deseado
+
+              <input
+                type="number"
+                min="1000"
+                value={alertTarget}
+                onChange={(e) => setAlertTarget(e.target.value)}
+              />
+            </label>
+
+            <button
+              className="button primary full"
+              onClick={saveAlert}
+            >
+              Guardar alerta
+            </button>
+
+            <small>
+              La alerta se guarda en este navegador.
+              Las notificaciones automáticas requieren backend.
+            </small>
+          </section>
         </div>
-        <div className="notice-card"><Info/><div><b>Transparencia de datos</b><p>Esta versión académica utiliza precios sintéticos de demostración. No consulta tiendas en tiempo real ni tiene convenios comerciales activos. Para operar comercialmente se necesitarían APIs, feeds o acuerdos autorizados con cada tienda.</p></div></div>
-      </section> : <>
-        <section className="hero">
-          <div className="hero-copy"><span className="eyebrow"><span className="eyebrow-dot"/> RADAR GAMER COLOMBIA</span>
-            <h1>Encuentra el mejor precio.<br/><span>Juega sin pagar de más.</span></h1>
-            <p>Compara videojuegos, descubre oportunidades y haz rendir tu presupuesto gamer.</p>
-            <div className="hero-pills"><span><Check size={13}/> Comparador multid tienda</span><span><Check size={13}/> Precios en COP</span></div>
-          </div>
-          <div className="hero-visual"><div className="radar-ring ring-a"/><div className="radar-ring ring-b"/><div className="radar-ring ring-c"/><div className="radar-sweep"/><div className="radar-center"><Gamepad2 size={42}/></div><span className="radar-point point-a"/><span className="radar-point point-b"/><span className="radar-point point-c"/></div>
-          <div className="hero-glow"/>
-        </section>
-        <section className="stats-row">
-          <div className="stat-card"><span className="stat-icon violet"><Gamepad2/></span><div><strong>36</strong><span>Juegos en catálogo</span></div></div>
-          <div className="stat-card"><span className="stat-icon lime"><CircleDollarSign/></span><div><strong>5</strong><span>Tiendas comparadas</span></div></div>
-          <div className="stat-card"><span className="stat-icon pink"><TrendingDown/></span><div><strong>{GAMES.filter(g=>g.maxDiscount>0).length}</strong><span>Juegos con descuentos demo</span></div></div>
-          <div className="stat-card"><span className="stat-icon blue"><Heart/></span><div><strong>{favorites.length}</strong><span>En tu wishlist</span></div></div>
-        </section>
+      )}
 
-        <section className="content-section">
-          <div className="section-heading">
-            <div><span className="eyebrow">{tab==="Ofertas"?"OPORTUNIDADES":"CATÁLOGO GAMER"}</span><h2>{tab==="Ofertas"?"Ofertas destacadas":tab==="Favoritos"?"Tu lista de favoritos":tab==="Historial"?"Historial de precios":"Explora videojuegos"}</h2><p>{tab==="Historial"?"Consulta una vista ilustrativa de la evolución de precios.":"Encuentra tu próximo juego al precio que buscas."}</p></div>
-            <div className="heading-actions"><button className={`outline-button ${showBudget?"selected":""}`} onClick={()=>setShowBudget(v=>!v)}><CircleDollarSign size={16}/> Mi presupuesto</button><button className="outline-button filter-toggle" onClick={()=>setShowFilters(v=>!v)}><SlidersHorizontal size={16}/> Filtros <ChevronDown size={14}/></button></div>
-          </div>
-          <div className="search-bar"><Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Busca un juego, por ejemplo: Elden Ring..." aria-label="Buscar videojuego"/><kbd>⌘ K</kbd></div>
-          {showBudget&&<div className="budget-panel"><div><b>Define tu presupuesto</b><span>Mostraremos juegos cuyo precio mínimo esté dentro de este valor.</span></div><div className="budget-input"><span>$</span><input type="number" min="0" placeholder="Ej. 150000" value={budget} onChange={e=>setBudget(e.target.value)}/><span>COP</span></div><button className="text-button" onClick={()=>setBudget("")}>Limpiar</button></div>}
-          {showFilters&&<div className="filters-panel">
-            <label>Plataforma<select value={platform} onChange={e=>setPlatform(e.target.value)}><option value="all">Todas las plataformas</option>{Object.entries(PLATFORMS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
-            <label>Género<select value={genre} onChange={e=>setGenre(e.target.value)}><option value="all">Todos los géneros</option>{GENRES.map(g=><option key={g}>{g}</option>)}</select></label>
-            <label>Ordenar por<select value={sort} onChange={e=>setSort(e.target.value)}><option value="cheap">Precio: menor a mayor</option><option value="expensive">Precio: mayor a menor</option><option value="discount">Mayor descuento</option><option value="name">Nombre A–Z</option></select></label>
-            <label className="range-filter">Precio máximo <b>{formatCOP(maxPrice)}</b><input type="range" min="20000" max="300000" step="5000" value={maxPrice} onChange={e=>setMaxPrice(Number(e.target.value))}/></label>
-            <label className="check-filter"><input type="checkbox" checked={onlyDeals} onChange={e=>setOnlyDeals(e.target.checked)}/> Solo ofertas</label>
-            <button className="text-button" onClick={resetFilters}>Restablecer filtros</button>
-          </div>}
-          <div className="results-row"><span><b>{filtered.length}</b> resultados <span className="muted">· precios ilustrativos en COP</span></span><span className="sort-hint"><ArrowDownUp size={13}/> {sort==="cheap"?"Menor precio":sort==="expensive"?"Mayor precio":sort==="discount"?"Mayor descuento":"Nombre A–Z"}</span></div>
-          {tab==="Historial" ? <div className="history-grid">{GAMES.slice(0,6).map(game=><div className="history-card" key={game.id}><GameCover game={game}/><div><b>{game.name}</b><span>Precio actual demo: {formatCOP(game.cheapest)}</span><span className="chart-down"><TrendingDown size={13}/> Tendencia ilustrativa</span></div></div>)}</div>
-          : filtered.length ? <div className="game-grid">{filtered.map(game=><GameCard key={game.id} game={game} favorite={favorites.includes(game.id)} onFavorite={toggleFavorite} onOpen={setSelected}/>)}</div>
-          : <div className="empty-state"><div className="empty-icon"><Search/></div><h3>No encontramos resultados</h3><p>Prueba cambiar la búsqueda o quitar algunos filtros.</p><button className="outline-button" onClick={resetFilters}>Limpiar filtros</button></div>}
-        </section>
-      </>}
-      <footer className="site-footer"><div className="footer-brand"><span className="brand-mark"><Activity size={19}/></span><b>GameRadar <span>CO</span></b></div><p>Un radar inteligente para la comunidad gamer colombiana.</p><div className="footer-bottom"><span>© 2026 GameRadar CO · Proyecto académico</span><span><Info size={13}/> Precios de demostración, no verificados en tiendas.</span></div></footer>
-    </main>
+      {toast && (
+        <div className="toast">
+          <Check size={16} />
+          {toast}
+        </div>
+      )}
 
-    <div className="mobile-bottom-nav">{nav.slice(0,4).map(({name,icon:Icon})=><button key={name} className={tab===name?"nav-active":""} onClick={()=>setTab(name)}><Icon size={18}/><span>{name}</span></button>)}</div>
-    <GameModal game={selected} onClose={()=>setSelected(null)} onAlert={openAlert}/>
-    <AlertModal game={alertGame} onClose={()=>setAlertGame(null)} onSave={saveAlert}/>
-    {tab!=="Acerca"&&alerts.length>0&&<div className="alerts-float"><Bell size={14}/>{alerts.length} alertas guardadas</div>}
-    {toast&&<div className="toast"><Check size={16}/>{toast}</div>}
-  </div>;
+    </div>
+  );
 }
