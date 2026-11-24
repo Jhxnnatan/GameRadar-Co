@@ -4,7 +4,6 @@ import {
   CircleDollarSign, Gamepad2, Heart, Info, LayoutGrid, Search, SlidersHorizontal,
   Sparkles, Star, TrendingDown, X, Zap
 } from "lucide-react";
-
 import { GAMES, GENRES, PLATFORMS, formatCOP, coverGradient } from "./data";
 import { account } from "./lib/appwrite";
 import AuthPanel from "./components/AuthPanel";
@@ -19,9 +18,18 @@ const readStore = (key, fallback) => {
 
 function GameCover({ game, large = false }) {
   const symbols = {
-    RPG: "✦", Acción: "⚔", Roguelike: "◈", Plataformas: "▰",
-    Simulación: "✿", Metroidvania: "◉", Deportes: "◎", Carreras: "⌁",
-    Aventura: "△", Terror: "☾", Puzzle: "▦", Estrategia: "⬡"
+    RPG: "✦",
+    Acción: "⚔",
+    Roguelike: "◈",
+    Plataformas: "▰",
+    Simulación: "✿",
+    Metroidvania: "◉",
+    Deportes: "◎",
+    Carreras: "⌁",
+    Aventura: "△",
+    Terror: "☾",
+    Puzzle: "▦",
+    Estrategia: "⬡"
   };
 
   return (
@@ -66,7 +74,12 @@ function PriceLine({ offer, best }) {
       <span>
         <span className="store-dot">{offer.code}</span>
         {offer.store}
-        {best && <span className="best-label">MEJOR PRECIO</span>}
+
+        {best && (
+          <span className="best-label">
+            MEJOR PRECIO
+          </span>
+        )}
       </span>
 
       <strong>{formatCOP(offer.price)}</strong>
@@ -88,6 +101,7 @@ function GameCard({ game, favorite, onFavorite, onOpen }) {
       <div className="game-card-body">
         <div className="card-meta">
           <span>{game.genre}</span>
+
           <span className="radar-mini">
             <Zap size={12} />
             {game.radar}/100
@@ -119,7 +133,9 @@ function GameCard({ game, favorite, onFavorite, onOpen }) {
             }`}
             onClick={() => onFavorite(game.id)}
             aria-label={
-              favorite ? "Quitar de favoritos" : "Guardar en favoritos"
+              favorite
+                ? "Quitar de favoritos"
+                : "Guardar en favoritos"
             }
           >
             <Heart
@@ -133,7 +149,8 @@ function GameCard({ game, favorite, onFavorite, onOpen }) {
           className="compare-button"
           onClick={() => onOpen(game)}
         >
-          Comparar precios <ChevronRight size={15} />
+          Comparar precios
+          <ChevronRight size={15} />
         </button>
       </div>
     </article>
@@ -144,7 +161,8 @@ function PriceChart({ game }) {
   const values = Array.from({ length: 12 }, (_, i) => {
     const trend = 1.18 - i * 0.027;
     const wave = Math.sin((i + game.id) * 0.82) * 0.075;
-    const variation = (((game.id * 13 + i * 7) % 9) - 4) * 0.012;
+    const variation =
+      (((game.id * 13 + i * 7) % 9) - 4) * 0.012;
 
     return Math.max(0.72, trend + wave + variation);
   });
@@ -154,7 +172,9 @@ function PriceChart({ game }) {
     y: 95 - v * 52
   }));
 
-  const change = Math.round((1 - values.at(-1) / values[0]) * 100);
+  const change = Math.round(
+    (1 - values.at(-1) / values[0]) * 100
+  );
 
   const d = points
     .map((p, i) => `${i ? "L" : "M"} ${p.x} ${p.y}`)
@@ -165,11 +185,14 @@ function PriceChart({ game }) {
       <div className="chart-heading">
         <div>
           <b>Historial de precio</b>
-          <span>Últimos 12 registros · datos de demostración</span>
+          <span>
+            Últimos 12 registros · datos de demostración
+          </span>
         </div>
 
         <span className="chart-down">
-          <TrendingDown size={14} /> -{change}%
+          <TrendingDown size={14} />
+          -{change}%
         </span>
       </div>
 
@@ -248,8 +271,9 @@ function PriceChart({ game }) {
 function GameModal({ game, onClose, onAlert }) {
   if (!game) return null;
 
-  const sorted = [...(game.shownOffers || game.offers)]
-    .sort((a, b) => a.price - b.price);
+  const sorted = [
+    ...(game.shownOffers || game.offers)
+  ].sort((a, b) => a.price - b.price);
 
   return (
     <div
@@ -297,7 +321,8 @@ function GameModal({ game, onClose, onAlert }) {
               className="primary-button"
               onClick={() => onAlert(game)}
             >
-              <Bell size={16} /> Crear alerta de precio
+              <Bell size={16} />
+              Crear alerta de precio
             </button>
           </div>
         </div>
@@ -336,7 +361,9 @@ function AlertModal({ game, onClose, onSave }) {
 
   useEffect(() => {
     if (game) {
-      setTarget(String(Math.round(game.cheapest * 0.85 / 100) * 100));
+      setTarget(
+        String(Math.round((game.cheapest * 0.85) / 100) * 100)
+      );
     }
   }, [game]);
 
@@ -403,8 +430,8 @@ function AlertModal({ game, onClose, onSave }) {
         </button>
 
         <p className="tiny-disclaimer">
-          Esta alerta se guarda en este navegador. No envía
-          notificaciones automáticas.
+          Esta alerta se guarda en este navegador.
+          No envía notificaciones automáticas.
         </p>
       </section>
     </div>
@@ -413,7 +440,6 @@ function AlertModal({ game, onClose, onSave }) {
 
 export default function App() {
   const [tab, setTab] = useState("Explorar");
-
   const [query, setQuery] = useState("");
   const [platform, setPlatform] = useState("all");
   const [genre, setGenre] = useState("all");
@@ -423,7 +449,6 @@ export default function App() {
   const [budget, setBudget] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  // Datos locales actuales (todavía no migrados a Appwrite)
   const [favorites, setFavorites] = useState(
     () => readStore("gr-favorites", [])
   );
@@ -436,46 +461,42 @@ export default function App() {
     () => readStore("gr-history", [])
   );
 
-  // Autenticación Appwrite
-  const [user, setUser] = useState(null);
-  const [showAuth, setShowAuth] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-
   const [selected, setSelected] = useState(null);
   const [alertGame, setAlertGame] = useState(null);
   const [toast, setToast] = useState("");
   const [showBudget, setShowBudget] = useState(false);
 
-  // Revisar si ya existe una sesión de Appwrite
+  // Authentication states
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
+  const [user, setUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  // Check Appwrite session on startup
   useEffect(() => {
-    let mounted = true;
-
-    const checkSession = async () => {
-      try {
-        const currentUser = await account.get();
-
-        if (mounted) {
-          setUser(currentUser);
-        }
-      } catch {
-        if (mounted) {
-          setUser(null);
-        }
-      } finally {
-        if (mounted) {
-          setAuthLoading(false);
-        }
-      }
-    };
-
-    checkSession();
-
-    return () => {
-      mounted = false;
-    };
+    account
+      .get()
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setAuthChecking(false));
   }, []);
 
-  // Persistencia local de los datos actuales
+  const openAuth = (mode) => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await account.deleteSession("current");
+      setUser(null);
+      setToast("Sesión cerrada");
+    } catch (error) {
+      setToast(error.message || "No se pudo cerrar sesión");
+    }
+  };
+
+  // Local storage persistence
   useEffect(() => {
     localStorage.setItem(
       "gr-favorites",
@@ -497,7 +518,7 @@ export default function App() {
     );
   }, [recentlyViewed]);
 
-  // Atajos de teclado
+  // Keyboard shortcuts
   useEffect(() => {
     const handleShortcut = (event) => {
       if (
@@ -511,17 +532,16 @@ export default function App() {
       if (event.key === "Escape") {
         setSelected(null);
         setAlertGame(null);
-        setShowAuth(false);
       }
     };
 
     window.addEventListener("keydown", handleShortcut);
 
-    return () =>
+    return () => {
       window.removeEventListener("keydown", handleShortcut);
+    };
   }, []);
 
-  // Toast
   useEffect(() => {
     if (!toast) return;
 
@@ -530,26 +550,6 @@ export default function App() {
     return () => clearTimeout(id);
   }, [toast]);
 
-  // Login completado desde AuthPanel
-  const handleLogin = (loggedUser) => {
-    setUser(loggedUser);
-    setShowAuth(false);
-    setToast("Sesión iniciada correctamente");
-  };
-
-  // Cerrar sesión
-  const handleLogout = async () => {
-    try {
-      await account.deleteSession("current");
-
-      setUser(null);
-      setToast("Sesión cerrada correctamente");
-    } catch (error) {
-      setToast(error.message || "No se pudo cerrar sesión");
-    }
-  };
-
-  // Favoritos
   const toggleFavorite = (id) => {
     const wasFavorite = favorites.includes(id);
 
@@ -566,16 +566,17 @@ export default function App() {
     );
   };
 
-  // Historial
   const openGame = (game) => {
     setSelected(game);
 
     setRecentlyViewed((old) =>
-      [game.id, ...old.filter((id) => id !== game.id)].slice(0, 12)
+      [game.id, ...old.filter((id) => id !== game.id)].slice(
+        0,
+        12
+      )
     );
   };
 
-  // Alertas
   const saveAlert = (target) => {
     setAlerts((old) => [
       {
@@ -592,7 +593,6 @@ export default function App() {
     setToast("Alerta guardada en este dispositivo");
   };
 
-  // Filtrar juegos
   const filtered = useMemo(() => {
     let list = GAMES.filter((g) => {
       const selectedOffers =
@@ -645,10 +645,10 @@ export default function App() {
       sort === "expensive"
         ? low(b) - low(a)
         : sort === "discount"
-          ? b.maxDiscount - a.maxDiscount
-          : sort === "name"
-            ? a.name.localeCompare(b.name, "es")
-            : low(a) - low(b)
+        ? b.maxDiscount - a.maxDiscount
+        : sort === "name"
+        ? a.name.localeCompare(b.name, "es")
+        : low(a) - low(b)
     );
   }, [
     query,
@@ -720,39 +720,47 @@ export default function App() {
             ))}
           </nav>
 
+          {/* Authentication buttons - corrected layout */}
           <div className="topbar-right">
-            {!authLoading && (
-              user ? (
-                <div className="auth-user-area">
-                  <span className="auth-user-email">
-                    {user.email}
+            <div className="auth-actions">
+              {user ? (
+                <>
+                  <span
+                    className="auth-user"
+                    title={user.email}
+                  >
+                    {user.name || user.email}
                   </span>
 
                   <button
-                    className="outline-button"
+                    className="auth-header-button"
                     onClick={handleLogout}
                   >
                     Cerrar sesión
                   </button>
-                </div>
+                </>
               ) : (
-                <div className="auth-buttons">
+                <>
                   <button
-                    className="outline-button"
-                    onClick={() => setShowAuth(true)}
+                    className="auth-header-button"
+                    onClick={() => openAuth("login")}
+                    disabled={authChecking}
                   >
-                    Iniciar sesión
+                    {authChecking
+                      ? "Cargando..."
+                      : "Iniciar sesión"}
                   </button>
 
                   <button
-                    className="primary-button"
-                    onClick={() => setShowAuth(true)}
+                    className="auth-header-button auth-register-button"
+                    onClick={() => openAuth("register")}
+                    disabled={authChecking}
                   >
                     Registrarse
                   </button>
-                </div>
-              )
-            )}
+                </>
+              )}
+            </div>
 
             <span className="demo-indicator">
               <span /> MODO DEMO
@@ -782,8 +790,8 @@ export default function App() {
 
             <p className="about-lead">
               GameRadar CO nace para ayudar a los jugadores
-              colombianos a comparar precios de videojuegos
-              y tomar decisiones de compra con más información.
+              colombianos a comparar precios de videojuegos y
+              tomar decisiones de compra con más información.
             </p>
 
             <div className="about-grid">
@@ -791,7 +799,9 @@ export default function App() {
                 <div className="feature-icon">
                   <CircleDollarSign />
                 </div>
+
                 <h3>Afiliados</h3>
+
                 <p>
                   El proyecto podría recibir una comisión cuando
                   una compra se realice desde un enlace de
@@ -803,7 +813,9 @@ export default function App() {
                 <div className="feature-icon">
                   <Activity />
                 </div>
+
                 <h3>Publicidad identificada</h3>
+
                 <p>
                   Espacios promocionales claramente marcados,
                   separados del ordenamiento objetivo por precio.
@@ -814,7 +826,9 @@ export default function App() {
                 <div className="feature-icon">
                   <Sparkles />
                 </div>
+
                 <h3>Plan premium</h3>
+
                 <p>
                   Funciones futuras como alertas avanzadas,
                   seguimiento de precios y listas sincronizadas.
@@ -832,8 +846,9 @@ export default function App() {
                   Esta versión académica utiliza precios
                   sintéticos de demostración. No consulta tiendas
                   en tiempo real ni tiene convenios comerciales
-                  activos. Para operar comercialmente se necesitarían
-                  APIs, feeds o acuerdos autorizados con cada tienda.
+                  activos. Para operar comercialmente se
+                  necesitarían APIs, feeds o acuerdos autorizados
+                  con cada tienda.
                 </p>
               </div>
             </div>
@@ -876,7 +891,6 @@ export default function App() {
                 <div className="radar-ring ring-b" />
                 <div className="radar-ring ring-c" />
                 <div className="radar-sweep" />
-
                 <div className="radar-center">
                   <Gamepad2 size={42} />
                 </div>
@@ -950,10 +964,10 @@ export default function App() {
                     {tab === "Ofertas"
                       ? "Ofertas destacadas"
                       : tab === "Favoritos"
-                        ? "Tu lista de favoritos"
-                        : tab === "Historial"
-                          ? "Historial de precios"
-                          : "Explora videojuegos"}
+                      ? "Tu lista de favoritos"
+                      : tab === "Historial"
+                      ? "Historial de precios"
+                      : "Explora videojuegos"}
                   </h2>
 
                   <p>
@@ -1003,8 +1017,8 @@ export default function App() {
                   <div>
                     <b>Define tu presupuesto</b>
                     <span>
-                      Mostraremos juegos cuyo precio mínimo esté
-                      dentro de este valor.
+                      Mostraremos juegos cuyo precio mínimo
+                      esté dentro de este valor.
                     </span>
                   </div>
 
@@ -1040,7 +1054,9 @@ export default function App() {
                       value={platform}
                       onChange={(e) => setPlatform(e.target.value)}
                     >
-                      <option value="all">Todas las plataformas</option>
+                      <option value="all">
+                        Todas las plataformas
+                      </option>
 
                       {Object.entries(PLATFORMS).map(([k, v]) => (
                         <option key={k} value={k}>
@@ -1057,7 +1073,9 @@ export default function App() {
                       value={genre}
                       onChange={(e) => setGenre(e.target.value)}
                     >
-                      <option value="all">Todos los géneros</option>
+                      <option value="all">
+                        Todos los géneros
+                      </option>
 
                       {GENRES.map((g) => (
                         <option key={g}>{g}</option>
@@ -1075,12 +1093,15 @@ export default function App() {
                       <option value="cheap">
                         Precio: menor a mayor
                       </option>
+
                       <option value="expensive">
                         Precio: mayor a menor
                       </option>
+
                       <option value="discount">
                         Mayor descuento
                       </option>
+
                       <option value="name">
                         Nombre A–Z
                       </option>
@@ -1107,8 +1128,11 @@ export default function App() {
                     <input
                       type="checkbox"
                       checked={onlyDeals}
-                      onChange={(e) => setOnlyDeals(e.target.checked)}
+                      onChange={(e) =>
+                        setOnlyDeals(e.target.checked)
+                      }
                     />
+
                     Solo ofertas
                   </label>
 
@@ -1135,10 +1159,10 @@ export default function App() {
                   {sort === "cheap"
                     ? "Menor precio"
                     : sort === "expensive"
-                      ? "Mayor precio"
-                      : sort === "discount"
-                        ? "Mayor descuento"
-                        : "Nombre A–Z"}
+                    ? "Mayor precio"
+                    : sort === "discount"
+                    ? "Mayor descuento"
+                    : "Nombre A–Z"}
                 </span>
               </div>
 
@@ -1199,7 +1223,8 @@ export default function App() {
 
                     <p>
                       Cuando abras la ficha de un videojuego,
-                      aparecerá aquí para que puedas volver a consultarlo.
+                      aparecerá aquí para que puedas volver
+                      a consultarlo.
                     </p>
 
                     <button
@@ -1262,9 +1287,7 @@ export default function App() {
           </p>
 
           <div className="footer-bottom">
-            <span>
-              © 2026 GameRadar CO · Proyecto académico
-            </span>
+            <span>© 2026 GameRadar CO · Proyecto académico</span>
 
             <span>
               <Info size={13} />
@@ -1299,10 +1322,14 @@ export default function App() {
         onSave={saveAlert}
       />
 
-      {showAuth && (
+      {authOpen && (
         <AuthPanel
-          onClose={() => setShowAuth(false)}
-          onLogin={handleLogin}
+          initialMode={authMode}
+          onClose={() => setAuthOpen(false)}
+          onLogin={(loggedUser) => {
+            setUser(loggedUser);
+            setToast("Sesión iniciada");
+          }}
         />
       )}
 
