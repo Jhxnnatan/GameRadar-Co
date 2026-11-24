@@ -1,9 +1,12 @@
-```jsx
 import { useState } from "react";
 import { account, ID } from "../lib/appwrite";
 
-export default function AuthPanel({ onClose, onLogin }) {
-  const [mode, setMode] = useState("login");
+export default function AuthPanel({
+  onClose,
+  onLogin,
+  initialMode = "login"
+}) {
+  const [mode, setMode] = useState(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,15 +17,13 @@ export default function AuthPanel({ onClose, onLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (loading) return;
-
     setLoading(true);
     setError("");
     setMessage("");
 
-    try {
-      const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = email.trim().toLowerCase();
 
+    try {
       if (mode === "register") {
         if (password.length < 8) {
           throw new Error(
@@ -30,35 +31,25 @@ export default function AuthPanel({ onClose, onLogin }) {
           );
         }
 
-        if (!name.trim()) {
-          throw new Error("Ingresa tu nombre.");
-        }
-
-        // Crear la cuenta en Appwrite
         await account.create({
           userId: ID.unique(),
           email: cleanEmail,
           password,
-          name: name.trim(),
+          name: name.trim()
         });
 
-        // Crear sesión automáticamente
         await account.createEmailPasswordSession({
           email: cleanEmail,
-          password,
+          password
         });
       } else {
-        // Iniciar sesión
         await account.createEmailPasswordSession({
           email: cleanEmail,
-          password,
+          password
         });
       }
 
-      // Recuperar usuario autenticado
       const user = await account.get();
-
-      setMessage("Autenticación exitosa.");
 
       if (onLogin) {
         onLogin(user);
@@ -68,27 +59,46 @@ export default function AuthPanel({ onClose, onLogin }) {
         onClose();
       }
     } catch (err) {
-      console.error("Error de autenticación Appwrite:", err);
+      console.error("Authentication error:", err);
 
       setError(
         err?.message ||
-        "No fue posible completar la operación. Intenta nuevamente."
+          "Ocurrió un error al autenticar la cuenta."
       );
     } finally {
       setLoading(false);
     }
   };
 
+  const changeMode = () => {
+    setMode((current) =>
+      current === "login" ? "register" : "login"
+    );
+
+    setError("");
+    setMessage("");
+  };
+
   return (
-    <div className="auth-backdrop">
+    <div
+      className="auth-backdrop"
+      onMouseDown={(e) =>
+        e.target === e.currentTarget && onClose()
+      }
+    >
       <section className="auth-card">
         <button
           className="auth-close"
           onClick={onClose}
           type="button"
+          aria-label="Cerrar"
         >
           ×
         </button>
+
+        <div className="auth-logo">
+          GAMERADAR <b>CO</b>
+        </div>
 
         <h2>
           {mode === "login"
@@ -107,6 +117,7 @@ export default function AuthPanel({ onClose, onLogin }) {
               placeholder="Nombre completo"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
               required
             />
           )}
@@ -127,9 +138,9 @@ export default function AuthPanel({ onClose, onLogin }) {
             onChange={(e) => setPassword(e.target.value)}
             minLength={8}
             autoComplete={
-              mode === "login"
-                ? "current-password"
-                : "new-password"
+              mode === "register"
+                ? "new-password"
+                : "current-password"
             }
             required
           />
@@ -147,34 +158,28 @@ export default function AuthPanel({ onClose, onLogin }) {
           )}
 
           <button
+            className="auth-submit"
             type="submit"
             disabled={loading}
           >
             {loading
               ? "Procesando..."
               : mode === "login"
-                ? "Iniciar sesión"
-                : "Registrarme"}
+              ? "Iniciar sesión"
+              : "Crear cuenta"}
           </button>
         </form>
 
         <div className="auth-switch">
-          {mode === "login"
-            ? "¿No tienes cuenta?"
-            : "¿Ya tienes una cuenta?"}
+          <span>
+            {mode === "login"
+              ? "¿No tienes cuenta?"
+              : "¿Ya tienes una cuenta?"}
+          </span>
 
           <button
             type="button"
-            disabled={loading}
-            onClick={() => {
-              setMode(
-                mode === "login"
-                  ? "register"
-                  : "login"
-              );
-              setError("");
-              setMessage("");
-            }}
+            onClick={changeMode}
           >
             {mode === "login"
               ? "Registrarme"
@@ -185,4 +190,3 @@ export default function AuthPanel({ onClose, onLogin }) {
     </div>
   );
 }
-```
